@@ -3,136 +3,219 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LingoReader｜互動式英文閱讀器</title>
+  <meta name="theme-color" content="#090909" />
+  <title>LingoReader｜Liquid Glass English Reader</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600&family=Poppins:ital,wght@0,400;0,500;0,600;1,400&family=Source+Serif+4:ital,wght@1,400;1,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
+  <div class="background-stage" aria-hidden="true">
+    <video class="background-video" autoplay muted loop playsinline preload="metadata">
+      <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260315_073750_51473149-4350-4920-ae24-c8214286f323.mp4" type="video/mp4" />
+    </video>
+    <div class="background-shade"></div>
+    <div class="background-grain"></div>
+  </div>
+
   <div class="app-shell">
-    <header class="topbar">
-      <div class="brand">
-        <div class="logo">L</div>
-        <div>
-          <strong>LingoReader</strong>
-          <span>把任何英文文章變成你的互動教材</span>
-        </div>
-      </div>
-      <div class="top-actions">
-        <span id="aiStatus" class="status-pill">檢查 AI…</span>
-        <button class="ghost-btn" id="openVocabBtn">單字本 <b id="vocabCount">0</b></button>
-      </div>
-    </header>
-
-    <section class="import-card">
-      <div class="import-heading">
-        <div>
-          <span class="eyebrow">READ · CLICK · LEARN</span>
-          <h1>貼上文章網址，開始拆解英文。</h1>
-        </div>
-        <div class="settings-row">
-          <label>程度
-            <select id="levelSelect">
-              <option>A1</option><option selected>A2</option><option>B1</option>
-              <option>B2</option><option>C1</option>
-            </select>
-          </label>
-          <label>翻譯
-            <select id="languageSelect">
-              <option selected>繁體中文</option><option>日文</option><option>英文</option>
-            </select>
-          </label>
-        </div>
-      </div>
-      <div class="url-row">
-        <span class="link-icon">↗</span>
-        <input id="urlInput" type="url" placeholder="https://example.com/an-english-article" />
-        <button id="loadBtn" class="primary-btn">生成互動文章</button>
-      </div>
-      <div class="import-footer">
-        <button id="pasteModeBtn" class="text-btn">網站抓不到？改成貼上文章文字</button>
-        <span>部分付費牆或登入網站無法自動讀取</span>
-      </div>
-      <div id="pastePanel" class="paste-panel hidden">
-        <input id="manualTitle" placeholder="文章標題（可不填）" />
-        <textarea id="manualText" rows="7" placeholder="把英文文章貼在這裡…"></textarea>
-        <button id="useTextBtn" class="secondary-btn">使用這篇文字</button>
-      </div>
-    </section>
-
     <main class="workspace">
-      <section class="reader-panel">
-        <div id="emptyState" class="empty-state">
-          <div class="empty-illustration">
-            <span>word</span><span>phrase</span><span>grammar</span>
-            <div>Aa</div>
+      <section class="left-panel liquid-glass-strong">
+        <header class="topbar">
+          <div class="brand">
+            <div class="logo-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/></svg>
+            </div>
+            <div class="brand-copy">
+              <strong>LingoReader</strong>
+              <span>Interactive English Reading</span>
+            </div>
           </div>
-          <h2>你的文章會出現在這裡</h2>
-          <p>點單字查字典，點句子看翻譯、慣用語與文法。</p>
-          <button id="demoBtn" class="secondary-btn">先看示範文章</button>
-        </div>
-        <article id="articleView" class="article-view hidden">
-          <div class="article-meta">
-            <span id="sourceHost"></span>
-            <span id="articleDate"></span>
+          <button class="menu-pill liquid-glass" type="button" aria-label="閱讀模式">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            <span>Reader</span>
+          </button>
+        </header>
+
+        <section class="import-card">
+          <div class="hero-copy">
+            <span class="eyebrow">READ · CLICK · UNDERSTAND</span>
+            <h1>Turn any article into <em>your English lesson.</em></h1>
+            <p class="hero-description">貼上英文文章網址，直接點單字看繁中意思；選整句查看翻譯、文法與慣用語。</p>
           </div>
-          <h2 id="articleTitle"></h2>
-          <p id="articleAuthor" class="author"></p>
-          <div class="reader-help">
-            <span><i class="dot word-dot"></i> 點單字查意思</span>
-            <span><i class="dot sentence-dot"></i> 點空白處選整句</span>
+
+          <div class="url-row liquid-glass-strong">
+            <span class="link-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg>
+            </span>
+            <input id="urlInput" type="url" inputmode="url" autocomplete="url" placeholder="Paste an English article URL" aria-label="英文文章網址" />
+            <button id="loadBtn" class="primary-btn">生成互動文章</button>
           </div>
-          <div id="articleBody" class="article-body"></div>
-        </article>
+
+          <div class="import-footer">
+            <button id="pasteModeBtn" class="text-btn">網站抓不到？直接貼文章文字</button>
+            <span>部分付費牆或登入網站無法自動擷取</span>
+          </div>
+
+          <div id="pastePanel" class="paste-panel liquid-glass hidden">
+            <input id="manualTitle" placeholder="文章標題（可不填）" />
+            <textarea id="manualText" rows="7" placeholder="把英文文章貼在這裡…"></textarea>
+            <button id="useTextBtn" class="secondary-btn">使用這篇文字</button>
+          </div>
+
+          <div class="hero-bottom">
+            <div class="feature-pills" aria-label="功能">
+              <span class="liquid-glass">Instant Dictionary</span>
+              <span class="liquid-glass">Sentence Analysis</span>
+              <span class="liquid-glass">Vocabulary Archive</span>
+            </div>
+            <div class="settings-row">
+              <label>LEVEL
+                <select id="levelSelect">
+                  <option>A1</option><option selected>A2</option><option>B1</option>
+                  <option>B2</option><option>C1</option>
+                </select>
+              </label>
+              <label>TRANSLATION
+                <select id="languageSelect">
+                  <option selected>繁體中文</option><option>日文</option><option>英文</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="reader-panel liquid-glass">
+          <div id="emptyState" class="empty-state">
+            <div class="empty-orbit" aria-hidden="true">
+              <span class="orbit-ring ring-one"></span>
+              <span class="orbit-ring ring-two"></span>
+              <div class="orbit-core">Aa</div>
+              <span class="orbit-word word-one">word</span>
+              <span class="orbit-word word-two">phrase</span>
+              <span class="orbit-word word-three">grammar</span>
+            </div>
+            <div class="empty-copy">
+              <span class="section-kicker">YOUR READING SPACE</span>
+              <h2>文章會出現在這裡。</h2>
+              <p>點單字查字典，點句子看翻譯、句型、慣用語與文法。</p>
+              <button id="demoBtn" class="secondary-btn demo-button">先看示範文章 <span aria-hidden="true">↗</span></button>
+            </div>
+          </div>
+
+          <article id="articleView" class="article-view hidden">
+            <div class="article-meta">
+              <span id="sourceHost"></span>
+              <span id="articleDate"></span>
+            </div>
+            <h2 id="articleTitle"></h2>
+            <p id="articleAuthor" class="author"></p>
+            <div class="reader-help">
+              <span><i class="dot word-dot"></i>點單字查繁中意思</span>
+              <span><i class="dot sentence-dot"></i>點句子進行解析</span>
+            </div>
+            <div id="articleBody" class="article-body"></div>
+          </article>
+        </section>
+
+        <footer class="bottom-quote">
+          <span>READING, REIMAGINED</span>
+          <p>“The limits of my language mean the limits of <em>my world.</em>”</p>
+          <div><i></i><b>LUDWIG WITTGENSTEIN</b><i></i></div>
+        </footer>
       </section>
 
-      <aside class="study-panel">
-        <div class="study-tabs">
-          <button class="tab active" data-tab="analysis">句子解析</button>
-          <button class="tab" data-tab="dictionary">字典</button>
-          <button class="tab" data-tab="vocabulary">單字本</button>
+      <aside class="right-rail">
+        <div class="rail-topbar">
+          <div class="status-cluster liquid-glass">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="aiStatus" class="status-pill">檢查 AI…</span>
+          </div>
+          <button class="vocab-button liquid-glass" id="openVocabBtn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+            <span>單字本</span>
+            <b id="vocabCount">0</b>
+          </button>
         </div>
 
-        <div id="analysisTab" class="tab-content active">
-          <div id="analysisEmpty" class="panel-empty">
-            <div class="panel-icon">⌁</div>
-            <h3>選擇一個句子</h3>
-            <p>點文章中的句子，我會顯示翻譯、結構、文法與慣用語。</p>
+        <section class="ecosystem-card liquid-glass">
+          <div class="ecosystem-icon">
+            <svg viewBox="0 0 24 24"><path d="m12 3-1.7 4.3L6 9l4.3 1.7L12 15l1.7-4.3L18 9l-4.3-1.7L12 3ZM5 16l-.8 2.2L2 19l2.2.8L5 22l.8-2.2L8 19l-2.2-.8L5 16Zm14-2-1.1 2.9L15 18l2.9 1.1L19 22l1.1-2.9L23 18l-2.9-1.1L19 14Z"/></svg>
           </div>
-          <div id="analysisContent" class="hidden">
-            <div class="selected-card">
-              <div class="card-label">SELECTED SENTENCE</div>
-              <p id="selectedSentence"></p>
-              <button id="speakSentenceBtn" class="icon-btn" title="朗讀">▶</button>
+          <div>
+            <span>INTERACTIVE READING</span>
+            <h2>讀懂，而不只是讀完。</h2>
+            <p>右側會隨著你的點選，即時切換句子解析、英中字典與收藏單字。</p>
+          </div>
+        </section>
+
+        <section class="study-panel liquid-glass-strong">
+          <div class="study-tabs">
+            <button class="tab active" data-tab="analysis">句子解析</button>
+            <button class="tab" data-tab="dictionary">字典</button>
+            <button class="tab" data-tab="vocabulary">單字本</button>
+          </div>
+
+          <div id="analysisTab" class="tab-content active">
+            <div id="analysisEmpty" class="panel-empty">
+              <div class="panel-icon">
+                <svg viewBox="0 0 24 24"><path d="m12 3-1.7 4.3L6 9l4.3 1.7L12 15l1.7-4.3L18 9l-4.3-1.7L12 3ZM5 16l-.8 2.2L2 19l2.2.8L5 22l.8-2.2L8 19l-2.2-.8L5 16Z"/></svg>
+              </div>
+              <span class="section-kicker">SENTENCE LAB</span>
+              <h3>選擇一個句子</h3>
+              <p>點文章中的句子，我會顯示翻譯、結構、文法與慣用語。</p>
             </div>
-            <button id="analyzeBtn" class="primary-btn full">翻譯並解析這句</button>
-            <div id="analysisLoading" class="loading hidden"><span></span>正在拆解句子…</div>
-            <div id="analysisResult"></div>
+            <div id="analysisContent" class="hidden">
+              <div class="selected-card liquid-glass">
+                <div class="card-label">SELECTED SENTENCE</div>
+                <p id="selectedSentence"></p>
+                <button id="speakSentenceBtn" class="icon-btn" title="朗讀句子" aria-label="朗讀句子">
+                  <svg viewBox="0 0 24 24"><path d="m6 9-3 3 3 3V9Zm4-3-4 3v6l4 3V6Zm4.5 3.5a4 4 0 0 1 0 5m2.5-7.5a7 7 0 0 1 0 10"/></svg>
+                </button>
+              </div>
+              <button id="analyzeBtn" class="primary-btn full">翻譯並解析這句</button>
+              <div id="analysisLoading" class="loading hidden"><span></span>正在拆解句子…</div>
+              <div id="analysisResult"></div>
+            </div>
           </div>
-        </div>
 
-        <div id="dictionaryTab" class="tab-content">
-          <div id="dictionaryEmpty" class="panel-empty">
-            <div class="panel-icon">Aa</div>
-            <h3>點一個英文單字</h3>
-            <p>查看發音、詞性、英文解釋與例句。</p>
+          <div id="dictionaryTab" class="tab-content">
+            <div id="dictionaryEmpty" class="panel-empty">
+              <div class="panel-icon serif-icon">Aa</div>
+              <span class="section-kicker">DICTIONARY</span>
+              <h3>點一個英文單字</h3>
+              <p>先顯示繁體中文意思，再補充詞性、英文定義與例句。</p>
+            </div>
+            <div id="dictionaryContent" class="hidden"></div>
           </div>
-          <div id="dictionaryContent" class="hidden"></div>
-        </div>
 
-        <div id="vocabularyTab" class="tab-content">
-          <div class="vocab-toolbar">
-            <input id="vocabSearch" placeholder="搜尋收藏的單字" />
-            <button id="exportBtn" class="ghost-btn small">匯出 CSV</button>
+          <div id="vocabularyTab" class="tab-content">
+            <div class="vocab-toolbar">
+              <input id="vocabSearch" placeholder="搜尋收藏的單字" />
+              <button id="exportBtn" class="ghost-btn small">匯出 CSV</button>
+            </div>
+            <div id="vocabList"></div>
           </div>
-          <div id="vocabList"></div>
+        </section>
+
+        <div class="feature-grid">
+          <article class="feature-card liquid-glass">
+            <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="m15 4 5 5L8 21H3v-5L15 4Zm-3 3 5 5M3 21l4-4"/></svg></div>
+            <span>Processing</span>
+            <h3>Sentence Intelligence</h3>
+          </article>
+          <article class="feature-card liquid-glass">
+            <div class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg></div>
+            <span>Archive</span>
+            <h3>Personal Vocabulary</h3>
+          </article>
         </div>
       </aside>
     </main>
   </div>
 
-  <div id="toast" class="toast"></div>
+  <div id="toast" class="toast liquid-glass-strong"></div>
   <script src="/static/app.js"></script>
 </body>
 </html>
