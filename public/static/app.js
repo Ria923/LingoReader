@@ -114,6 +114,7 @@ function tokenizeSentence(sentence) {
 
 function renderArticle(article) {
   state.article = article;
+  document.body.classList.add("article-ready");
   $("#emptyState").classList.add("hidden");
   $("#articleView").classList.remove("hidden");
   $("#articleTitle").textContent = article.title || "Untitled article";
@@ -198,18 +199,26 @@ async function lookupWord(word) {
 
 function renderDictionary(data) {
   if (data.notFound) {
-    $("#dictionaryContent").innerHTML = `<div class="panel-empty"><div class="panel-icon">?</div><h3>${escapeHtml(data.word)}</h3><p>免費字典沒有找到這個詞，可能是專有名詞或變化形。</p></div>`;
+    $("#dictionaryContent").innerHTML = `<div class="panel-empty"><div class="panel-icon">?</div><h3>${escapeHtml(data.word)}</h3><p>免費英中字典沒有找到這個詞，可能是專有名詞或變化形。</p></div>`;
     return;
   }
   const saved = isSaved(data.word);
+  const summary = (data.chineseSummary || []).length
+    ? `<div class="chinese-summary"><div class="summary-label">繁體中文意思</div><div class="summary-words">${(data.chineseSummary || []).map(x => `<span>${escapeHtml(x)}</span>`).join("")}</div></div>`
+    : `<div class="chinese-summary muted-summary"><div class="summary-label">中文意思</div><p>這個詞在免費字典裡暫時沒有中文對應，下面保留英文定義。</p></div>`;
   const meanings = (data.meanings || []).map(meaning => `
     <div class="meaning-block">
-      <div class="part">${escapeHtml(meaning.partOfSpeech)}</div>
+      <div class="part"><strong>${escapeHtml(meaning.partOfSpeechZh || meaning.partOfSpeech)}</strong><span>${escapeHtml(meaning.partOfSpeech || "")}</span></div>
       ${(meaning.definitions || []).map((d, i) => `
-        <div class="definition"><b>${i + 1}.</b> ${escapeHtml(d.definition)}
-          ${d.example ? `<div class="example">“${escapeHtml(d.example)}”</div>` : ""}
+        <div class="definition">
+          <div class="zh-definition"><b>${i + 1}.</b> ${d.chinese?.length ? d.chinese.map(escapeHtml).join("、") : "暫無中文翻譯"}</div>
+          ${d.definition ? `<div class="en-definition">${escapeHtml(d.definition)}</div>` : ""}
+          ${d.example ? `<div class="example"><span>例句</span> “${escapeHtml(d.example)}”</div>` : ""}
         </div>`).join("")}
     </div>`).join("");
+  const source = data.sourceUrl
+    ? `<div class="dict-source">資料來源：<a href="${escapeHtml(data.sourceUrl)}" target="_blank" rel="noopener">Wiktionary</a>，由 <a href="https://freedictionaryapi.com" target="_blank" rel="noopener">FreeDictionaryAPI.com</a> 提供</div>`
+    : "";
   $("#dictionaryContent").innerHTML = `
     <div class="dict-head">
       <div><h3 class="dict-word">${escapeHtml(data.word)}</h3><div class="phonetic">${escapeHtml(data.phonetic || "")}</div></div>
@@ -218,16 +227,11 @@ function renderDictionary(data) {
         <button class="save-btn ${saved ? "saved" : ""}" id="saveWordBtn">${saved ? "已收藏" : "+ 加入單字本"}</button>
       </div>
     </div>
-    ${meanings || `<p class="panel-empty">沒有可顯示的定義。</p>`}`;
+    ${summary}
+    ${meanings || `<p class="panel-empty">沒有可顯示的定義。</p>`}
+    ${source}`;
   $("#saveWordBtn").addEventListener("click", () => toggleSaveWord(data));
-  $("#playWordBtn").addEventListener("click", () => {
-    if (data.audio) {
-      const audio = new Audio(data.audio);
-      audio.play().catch(() => speak(data.word));
-    } else {
-      speak(data.word);
-    }
-  });
+  $("#playWordBtn").addEventListener("click", () => speak(data.word));
 }
 
 function toggleSaveWord(data) {
@@ -237,12 +241,14 @@ function toggleSaveWord(data) {
     toast("已從單字本移除");
   } else {
     const firstMeaning = data.meanings?.[0];
-    const firstDefinition = firstMeaning?.definitions?.[0]?.definition || "";
+    const firstEntry = firstMeaning?.definitions?.[0];
+    const chineseDefinition = firstEntry?.chinese?.join("、") || data.chineseSummary?.join("、") || "";
     state.vocabulary.unshift({
       word: data.word,
       phonetic: data.phonetic || "",
-      partOfSpeech: firstMeaning?.partOfSpeech || "",
-      definition: firstDefinition,
+      partOfSpeech: firstMeaning?.partOfSpeechZh || firstMeaning?.partOfSpeech || "",
+      definition: chineseDefinition || firstEntry?.definition || "",
+      englishDefinition: firstEntry?.definition || "",
       sentence: state.selectedSentence || "",
       createdAt: new Date().toISOString()
     });
@@ -300,7 +306,7 @@ function renderAnalysis(data) {
 
 function renderVocabulary() {
   const query = $("#vocabSearch")?.value.toLowerCase().trim() || "";
-  const items = state.vocabulary.filter(item => !query || item.word.toLowerCase().includes(query) || item.definition.toLowerCase().includes(query));
+  const items = state.vocabulary.filter(item => !query || item.word.toLowerCase().includes(query) || (item.definition || "").toLowerCase().includes(query));
   const list = $("#vocabList");
   if (!items.length) {
     list.innerHTML = `<div class="panel-empty"><div class="panel-icon">☆</div><h3>${query ? "找不到單字" : "單字本還是空的"}</h3><p>閱讀時點一下單字，再按「加入單字本」。</p></div>`;
@@ -311,6 +317,7 @@ function renderVocabulary() {
       <div class="vocab-card-head"><h4>${escapeHtml(item.word)}</h4><button class="remove-btn" data-remove="${escapeHtml(item.word)}">移除</button></div>
       <div class="phonetic">${escapeHtml(item.phonetic || "")} ${item.partOfSpeech ? `· ${escapeHtml(item.partOfSpeech)}` : ""}</div>
       <p>${escapeHtml(item.definition || "")}</p>
+      ${item.englishDefinition ? `<p class="vocab-english">${escapeHtml(item.englishDefinition)}</p>` : ""}
       ${item.sentence ? `<p><i>${escapeHtml(item.sentence)}</i></p>` : ""}
     </div>`).join("");
   $$('[data-remove]').forEach(button => button.addEventListener("click", () => {
@@ -321,7 +328,7 @@ function renderVocabulary() {
 
 function exportCsv() {
   if (!state.vocabulary.length) return toast("單字本還是空的");
-  const rows = [["word", "phonetic", "part_of_speech", "definition", "example_sentence"], ...state.vocabulary.map(i => [i.word, i.phonetic, i.partOfSpeech, i.definition, i.sentence])];
+  const rows = [["word", "phonetic", "part_of_speech", "chinese_meaning", "english_definition", "example_sentence"], ...state.vocabulary.map(i => [i.word, i.phonetic, i.partOfSpeech, i.definition, i.englishDefinition || "", i.sentence])];
   const csv = rows.map(row => row.map(cell => `"${String(cell || "").replaceAll('"', '""')}"`).join(",")).join("\n");
   const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
   const link = document.createElement("a");
@@ -349,6 +356,7 @@ async function checkStatus() {
     const pill = $("#aiStatus");
     const lockLabel = data.accessProtected ? " · 已鎖定" : "";
     pill.textContent = (data.aiReady ? "Gemini 解析可用" : "免費朗讀／字典可用") + lockLabel;
+    pill.classList.remove("ready", "off");
     pill.classList.add(data.aiReady ? "ready" : "off");
     pill.title = data.aiReady ? "整句翻譯、文法與慣用語解析已啟用" : "朗讀與字典不需要 API Key；整句 AI 解析尚未啟用";
   } catch {}
@@ -365,7 +373,12 @@ $("#useTextBtn").addEventListener("click", () => {
 $("#demoBtn").addEventListener("click", () => renderArticle(demoArticle));
 $("#analyzeBtn").addEventListener("click", analyzeSentence);
 $("#speakSentenceBtn").addEventListener("click", () => speak(state.selectedSentence));
-$("#openVocabBtn").addEventListener("click", () => switchTab("vocabulary"));
+$("#openVocabBtn").addEventListener("click", () => {
+  switchTab("vocabulary");
+  if (window.matchMedia("(max-width: 980px)").matches) {
+    document.querySelector(".study-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+});
 $("#vocabSearch").addEventListener("input", renderVocabulary);
 $("#exportBtn").addEventListener("click", exportCsv);
 $$('.tab').forEach(tab => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
