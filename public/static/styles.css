@@ -889,3 +889,30 @@ body.article-ready h1 { font-size: clamp(36px, 4.2vw, 64px); }
 .recent-meta { color: var(--text-35); font-size: 10px; }
 .recent-remove { flex: none; width: 26px; height: 26px; border-radius: 50%; color: var(--text-50); background: rgba(255,255,255,.06); font-size: 15px; line-height: 1; }
 .recent-remove:hover { color: var(--text); background: rgba(255,255,255,.14); }
+
+/* ---- translate whole article ---- */
+.reader-help { flex-wrap: wrap; }
+.translate-all-btn {
+  margin-left: auto;
+  padding: 7px 14px;
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(255,255,255,.1);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.16);
+  font-size: 11px;
+  font-weight: 500;
+  transition: transform .2s ease, background .2s ease;
+}
+.translate-all-btn:hover { transform: scale(1.04); background: rgba(255,255,255,.16); }
+.translate-all-btn:disabled { opacity: .6; cursor: wait; transform: none; }
+.para-zh {
+  display: none;
+  margin: -0.7em 0 1.55em;
+  padding-left: 13px;
+  box-shadow: inset 2px 0 rgba(255,255,255,.22);
+  color: var(--text-65);
+  font-family: "Noto Sans TC", sans-serif;
+  font-size: 15px;
+  line-height: 1.85;
+}
+.article-body.show-zh .para-zh { display: block; }

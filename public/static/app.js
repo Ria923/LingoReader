@@ -6,6 +6,8 @@ const state = {
   selectedSentence: "",
   selectedElement: null,
   dictionaryData: null,
+  translations: null,
+  translationOn: false,
   vocabulary: JSON.parse(localStorage.getItem("lingoreader-vocabulary") || "[]"),
 };
 
@@ -185,6 +187,8 @@ function tokenizeSentence(sentence) {
 
 function renderArticle(article, opts = {}) {
   state.article = article;
+  state.translations = null;
+  state.translationOn = false;
   document.body.classList.add("article-ready");
   $("#emptyState").classList.add("hidden");
   $("#articleView").classList.remove("hidden");
@@ -198,7 +202,8 @@ function renderArticle(article, opts = {}) {
 
   const body = $("#articleBody");
   body.innerHTML = "";
-  article.paragraphs.forEach(paragraphText => {
+  body.classList.remove("show-zh");
+  article.paragraphs.forEach((paragraphText, index) => {
     const p = document.createElement("p");
     splitSentences(paragraphText).forEach(sentenceText => {
       const sentence = document.createElement("span");
@@ -208,11 +213,14 @@ function renderArticle(article, opts = {}) {
       sentence.addEventListener("click", () => selectSentence(sentence.dataset.sentence, sentence));
       p.appendChild(sentence);
     });
+    p.dataset.pidx = index;
     body.appendChild(p);
   });
   markAboveLevel();
   ensureLegend();
   showDifficulty(article);
+  ensureTranslateBtn();
+  const _tb = $("#translateAllBtn"); if (_tb) _tb.textContent = "翻譯整篇";
   if (!opts.fromHistory) saveArticleHistory(article);
   window.scrollTo({ top: document.querySelector(".workspace").offsetTop - 14, behavior: "smooth" });
 }
@@ -370,19 +378,19 @@ async function analyzeSentence() {
 function renderItems(items, titleKey, bodyKey) {
   if (!items?.length) return `<p>這句沒有特別需要補充的內容。</p>`;
   return `<div class="analysis-list">${items.map(item => `
-    <div class="analysis-item"><strong>${escapeHtml(item[titleKey] || "")}</strong><span>${escapeHtml(item[bodyKey] || "")}${item.example ? `<br>例：${escapeHtml(item.example)}` : ""}</span></div>
+    <div class="analysis-item"><strong>${escapeHtml(asText(item[titleKey]))}</strong><span>${escapeHtml(asText(item[bodyKey]))}${item.example ? `<br>例：${escapeHtml(asText(item.example))}` : ""}</span></div>
   `).join("")}</div>`;
 }
 
 function renderAnalysis(data) {
   $("#analysisResult").innerHTML = `
-    <section class="result-section"><div class="section-label">自然翻譯</div><p class="translation">${escapeHtml(data.translation || "")}</p></section>
-    <section class="result-section"><div class="section-label">這句在說什麼</div><p>${escapeHtml(data.plainMeaning || "")}</p></section>
-    <section class="result-section"><div class="section-label">句子結構</div><p>${escapeHtml(data.structure || "")}</p></section>
+    <section class="result-section"><div class="section-label">自然翻譯</div><p class="translation">${escapeHtml(asText(data.translation))}</p></section>
+    <section class="result-section"><div class="section-label">這句在說什麼</div><p>${escapeHtml(asText(data.plainMeaning))}</p></section>
+    <section class="result-section"><div class="section-label">句子結構</div><p>${escapeHtml(asText(data.structure))}</p></section>
     <section class="result-section"><div class="section-label">文法與句型</div>${renderItems(data.grammar, "pattern", "explanation")}</section>
     <section class="result-section"><div class="section-label">慣用語與搭配</div>${renderItems(data.phrases, "phrase", "meaning")}</section>
     <section class="result-section"><div class="section-label">重點單字</div>${renderItems(data.keyWords, "word", "meaning")}</section>
-    ${data.note ? `<section class="result-section"><div class="section-label">注意</div><p>${escapeHtml(data.note)}</p></section>` : ""}
+    ${data.note ? `<section class="result-section"><div class="section-label">注意</div><p>${escapeHtml(asText(data.note))}</p></section>` : ""}
   `;
 }
 
@@ -568,6 +576,83 @@ function renderRecentArticles() {
     renderRecentArticles();
     remoteArticleRemove(key);
   }));
+}
+
+function asText(v) {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (Array.isArray(v)) return v.map(asText).filter(Boolean).join("；");
+  if (typeof v === "object") return Object.entries(v).map(([k, val]) => `${k}：${asText(val)}`).join("；");
+  return String(v);
+}
+function ensureTranslateBtn() {
+  const help = document.querySelector(".reader-help");
+  if (help && !$("#translateAllBtn")) {
+    const b = document.createElement("button");
+    b.id = "translateAllBtn";
+    b.type = "button";
+    b.className = "translate-all-btn";
+    b.textContent = "翻譯整篇";
+    b.addEventListener("click", translateArticle);
+    help.appendChild(b);
+  }
+}
+function applyTranslations() {
+  const body = $("#articleBody");
+  body.querySelectorAll("p[data-pidx]").forEach(p => {
+    const idx = Number(p.dataset.pidx);
+    const zh = (state.translations && state.translations[idx]) || "";
+    let sib = p.nextElementSibling;
+    if (!(sib && sib.classList && sib.classList.contains("para-zh"))) {
+      if (!zh) return;
+      sib = document.createElement("div");
+      sib.className = "para-zh";
+      p.after(sib);
+    }
+    sib.textContent = zh;
+  });
+}
+async function translateArticle() {
+  if (!state.article) return;
+  const btn = $("#translateAllBtn");
+  const body = $("#articleBody");
+  if (state.translationOn) {
+    body.classList.remove("show-zh");
+    state.translationOn = false;
+    if (btn) btn.textContent = "翻譯整篇";
+    return;
+  }
+  if (!state.translations) {
+    const paras = state.article.paragraphs || [];
+    state.translations = new Array(paras.length).fill("");
+    setLoading(btn, true, "翻譯中…");
+    body.classList.add("show-zh");
+    try {
+      const CH = 15;
+      for (let i = 0; i < paras.length; i += CH) {
+        const res = await apiFetch("/api/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paragraphs: paras.slice(i, i + CH), targetLanguage: $("#languageSelect").value })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "翻譯失敗");
+        (data.translations || []).forEach((zh, j) => { state.translations[i + j] = zh; });
+        applyTranslations();
+      }
+    } catch (error) {
+      toast(error.message);
+      setLoading(btn, false);
+      state.translationOn = true;
+      if (btn) btn.textContent = "隱藏翻譯";
+      return;
+    }
+    setLoading(btn, false);
+  } else {
+    body.classList.add("show-zh");
+  }
+  state.translationOn = true;
+  if (btn) btn.textContent = "隱藏翻譯";
 }
 
 $("#loadBtn").addEventListener("click", loadArticleFromUrl);
