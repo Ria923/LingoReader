@@ -255,6 +255,23 @@ class SafeRedirectHandler(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, safe_url)
 
 
+_BIO_START = re.compile(r"^[A-Z][\w.'\u2019-]+(?:\s+[A-Z][\w.'\u2019-]+){0,3}\s+(is|was|holds|graduated|writes|specializes|works|received|earned|lives|joined)\b")
+_AUTHOR_BIO = re.compile(
+    r"\b(is (a|an|the) (independent |freelance |contributing |award-winning )?(writer|researcher|journalist|historian|curator|editor|contributor|art historian|blogger|photographer|critic|lecturer)"
+    r"|based in [A-Z]|holds a (ba|ma|phd|degree|masters)|graduated from|you can (follow|find) (her|him|them)"
+    r"|writes (about|for)|contributor to|(his|her|their) work has appeared|specializ(es|ing) in)\b",
+    re.I,
+)
+
+
+def _strip_author_bio(paragraphs: list[str]) -> list[str]:
+    if len(paragraphs) >= 3:
+        last = paragraphs[-1]
+        if len(last) <= 400 and _BIO_START.match(last) and _AUTHOR_BIO.search(last):
+            return paragraphs[:-1]
+    return paragraphs
+
+
 def fetch_article(url: str) -> dict[str, Any]:
     url = validate_public_url(url)
     opener = build_opener(SafeRedirectHandler())
@@ -287,6 +304,7 @@ def fetch_article(url: str) -> dict[str, Any]:
         paragraphs = clean_unique(parser.paragraphs)
     if not paragraphs:
         raise ValueError("抓不到正文。這個網站可能有付費牆或禁止擷取，請改用「貼上文章」功能。")
+    paragraphs = _strip_author_bio(paragraphs)
 
     title = parser.og_title or " ".join("".join(parser.title_parts).split()) or "Untitled article"
     title = re.split(r"\s+[|–—-]\s+", title)[0].strip() or title
