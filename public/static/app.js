@@ -290,9 +290,11 @@ function renderDictionary(data) {
           ${d.example ? `<div class="example"><span>例句</span> “${escapeHtml(d.example)}”</div>` : ""}
         </div>`).join("")}
     </div>`).join("");
-  const source = data.sourceUrl
-    ? `<div class="dict-source">資料來源：<a href="${escapeHtml(data.sourceUrl)}" target="_blank" rel="noopener">Wiktionary</a>，由 <a href="https://freedictionaryapi.com" target="_blank" rel="noopener">FreeDictionaryAPI.com</a> 提供</div>`
-    : "";
+  const source = data.aiSource
+    ? `<div class="dict-source">${data.note ? escapeHtml(data.note) + "<br>" : ""}由 AI（Groq）即時解釋，僅供參考。</div>`
+    : (data.sourceUrl
+      ? `<div class="dict-source">資料來源：<a href="${escapeHtml(data.sourceUrl)}" target="_blank" rel="noopener">Wiktionary</a>，由 <a href="https://freedictionaryapi.com" target="_blank" rel="noopener">FreeDictionaryAPI.com</a> 提供</div>`
+      : "");
   $("#dictionaryContent").innerHTML = `
     <div class="dict-head">
       <div><h3 class="dict-word">${escapeHtml(data.word)}</h3><div class="phonetic">${escapeHtml(data.phonetic || "")}</div></div>
