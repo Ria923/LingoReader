@@ -188,7 +188,9 @@ function renderArticle(article) {
   document.body.classList.add("article-ready");
   $("#emptyState").classList.add("hidden");
   $("#articleView").classList.remove("hidden");
-  $("#articleTitle").textContent = article.title || "Untitled article";
+  const titleEl = $("#articleTitle");
+  titleEl.innerHTML = "";
+  titleEl.appendChild(tokenizeSentence(article.title || "Untitled article"));
   $("#articleAuthor").textContent = article.author ? `By ${article.author}` : "";
   $("#articleDate").textContent = article.date || "";
   try { $("#sourceHost").textContent = new URL(article.url).hostname.replace(/^www\./, ""); }
