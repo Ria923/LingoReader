@@ -285,8 +285,8 @@ function renderDictionary(data) {
       <div class="part"><strong>${escapeHtml(meaning.partOfSpeechZh || meaning.partOfSpeech)}</strong><span>${escapeHtml(meaning.partOfSpeech || "")}</span></div>
       ${(meaning.definitions || []).map((d, i) => `
         <div class="definition">
-          <div class="zh-definition"><b>${i + 1}.</b> ${d.chinese?.length ? d.chinese.map(escapeHtml).join("、") : "暫無中文翻譯"}</div>
-          ${d.definition ? `<div class="en-definition">${escapeHtml(d.definition)}</div>` : ""}
+          ${d.chinese?.length ? `<div class="zh-definition"><b>${i + 1}.</b> ${d.chinese.map(escapeHtml).join("、")}</div>` : ""}
+          ${d.definition ? `<div class="en-definition">${d.chinese?.length ? "" : `<b>${i + 1}.</b> `}${escapeHtml(d.definition)}</div>` : ""}
           ${d.example ? `<div class="example"><span>例句</span> “${escapeHtml(d.example)}”</div>` : ""}
         </div>`).join("")}
     </div>`).join("");
