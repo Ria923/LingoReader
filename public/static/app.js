@@ -15,11 +15,28 @@ let CEFR = {};
 const CEFR_ORDER = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
 function wordLevel(w) { return CEFR[String(w || "").toLowerCase()] || ""; }
 function readerLevelIdx() { return CEFR_ORDER[($("#levelSelect")?.value) || "A2"] || 2; }
+const CEFR_SRC = "https://raw.githubusercontent.com/tyypgzl/Oxford-5000-words/main/full-word.json";
+function cacheCefr() { try { localStorage.setItem("lingoreader-cefr", JSON.stringify(CEFR)); } catch {} }
 async function loadCefr() {
   try { const c = localStorage.getItem("lingoreader-cefr"); if (c) { CEFR = JSON.parse(c) || {}; if (Object.keys(CEFR).length) return; } } catch {}
+  // fast path: backend proxy (used only if it returns a populated map)
   try {
     const r = await fetch("/api/cefr");
-    if (r.ok) { const d = await r.json(); CEFR = d.words || {}; try { localStorage.setItem("lingoreader-cefr", JSON.stringify(CEFR)); } catch {} }
+    if (r.ok) { const d = await r.json(); if (d.words && Object.keys(d.words).length) { CEFR = d.words; cacheCefr(); return; } }
+  } catch {}
+  // fallback: fetch the Oxford word list directly and build the map client-side
+  try {
+    const arr = await fetch(CEFR_SRC, { cache: "force-cache" }).then(r => r.json());
+    const map = {};
+    for (const e of arr) {
+      const v = (e && e.value) || {};
+      const w = String(v.word || "").trim().toLowerCase();
+      const l = String(v.level || "").trim().toUpperCase();
+      if (w && CEFR_ORDER[l] && /^[a-z][a-z' -]*$/.test(w)) {
+        if (!(w in map) || CEFR_ORDER[l] < CEFR_ORDER[map[w]]) map[w] = l;
+      }
+    }
+    if (Object.keys(map).length) { CEFR = map; cacheCefr(); }
   } catch {}
 }
 function markAboveLevel() {
