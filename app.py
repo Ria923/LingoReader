@@ -77,7 +77,7 @@ class ArticleParser(HTMLParser):
     _HARD_SKIP = {"script", "style", "noscript", "svg", "nav", "footer", "form", "figure", "figcaption", "aside"}
     _VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
     _BAD_CLASS = re.compile(
-        r"(?:^|[-_ ])(caption|related|recommend|share|social|newsletter|subscribe|promo|advert|sponsor|sidebar|widget|comments?|cta|readmore|read-more|more-stories|you-may|author-box|author-bio|post-nav|breadcrumb)(?:$|[-_ ])",
+        r"(?:^|[-_ ])(caption|related|recommend|share|social|newsletter|subscribe|promo|advert|sponsor|sidebar|widget|comments?|cta|readmore|read-more|more-stories|you-may|author-box|author-bio|post-nav|breadcrumb|desc|credit|byline|image-desc|img-desc)(?:$|[-_ ])",
         re.I,
     )
 
