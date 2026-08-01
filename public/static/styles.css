@@ -878,3 +878,14 @@ body.article-ready h1 { font-size: clamp(36px, 4.2vw, 64px); }
 @media (max-width: 460px) {
   .vocab-toolbar { grid-template-columns: 1fr; }
 }
+
+/* ---- recent articles history ---- */
+.recent-articles { max-width: 900px; margin-top: 18px; padding-top: 14px; box-shadow: inset 0 1px rgba(255,255,255,.08); }
+.recent-head { margin-bottom: 8px; color: var(--text-50); font-size: 10px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; }
+.recent-item { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; padding: 9px 12px; border-radius: 14px; background: rgba(255,255,255,.03); cursor: pointer; transition: background .18s ease; }
+.recent-item:hover { background: rgba(255,255,255,.08); }
+.recent-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.recent-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-80); font-size: 13px; }
+.recent-meta { color: var(--text-35); font-size: 10px; }
+.recent-remove { flex: none; width: 26px; height: 26px; border-radius: 50%; color: var(--text-50); background: rgba(255,255,255,.06); font-size: 15px; line-height: 1; }
+.recent-remove:hover { color: var(--text); background: rgba(255,255,255,.14); }

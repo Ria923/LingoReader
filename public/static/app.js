@@ -183,7 +183,7 @@ function tokenizeSentence(sentence) {
   return fragment;
 }
 
-function renderArticle(article) {
+function renderArticle(article, opts = {}) {
   state.article = article;
   document.body.classList.add("article-ready");
   $("#emptyState").classList.add("hidden");
@@ -213,6 +213,7 @@ function renderArticle(article) {
   markAboveLevel();
   ensureLegend();
   showDifficulty(article);
+  if (!opts.fromHistory) saveArticleHistory(article);
   window.scrollTo({ top: document.querySelector(".workspace").offsetTop - 14, behavior: "smooth" });
 }
 
@@ -498,6 +499,77 @@ async function initVocab() {
   refreshSavedHighlights();
 }
 
+const ARTS = { list: [] };
+function djb2(str) { let h = 5381; for (let i = 0; i < str.length; i++) { h = (((h << 5) + h) + str.charCodeAt(i)) & 0xffffffff; } return (h >>> 0).toString(36); }
+function articleKey(a) {
+  const url = a.url || "";
+  if (url && url !== "pasted://article" && !/^https?:\/\/demo/.test(url)) return "u:" + url;
+  return "p:" + djb2((a.title || "") + "|" + ((a.paragraphs && a.paragraphs[0]) || ""));
+}
+function articleHost(a) {
+  try { return new URL(a.url).hostname.replace(/^www\./, ""); }
+  catch { return (a.url === "pasted://article" || !a.url) ? "貼上的文章" : ""; }
+}
+async function remoteArticleSave(rec) {
+  if (!SYNC.enabled) return;
+  try { await apiFetch("/api/articles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(rec) }); } catch {}
+}
+async function remoteArticleRemove(key) {
+  if (!SYNC.enabled) return;
+  try { await apiFetch("/api/articles?key=" + encodeURIComponent(key), { method: "DELETE" }); } catch {}
+}
+function saveArticleHistory(a) {
+  if (!a || !a.paragraphs || !a.paragraphs.length) return;
+  if (/^https?:\/\/demo/.test(a.url || "")) return;
+  const realUrl = (a.url && a.url.indexOf("://") > 0 && a.url !== "pasted://article") ? a.url : "";
+  const rec = { key: articleKey(a), title: a.title || "Untitled", url: realUrl, host: articleHost(a), paragraphs: a.paragraphs.slice(0, 200), createdAt: new Date().toISOString() };
+  ARTS.list = [rec, ...ARTS.list.filter(x => x.key !== rec.key)].slice(0, 60);
+  try { localStorage.setItem("lingoreader-articles", JSON.stringify(ARTS.list)); } catch {}
+  renderRecentArticles();
+  remoteArticleSave(rec);
+}
+async function loadArticles() {
+  try { const c = localStorage.getItem("lingoreader-articles"); if (c) ARTS.list = JSON.parse(c) || []; } catch {}
+  renderRecentArticles();
+  try {
+    const r = await apiFetch("/api/articles");
+    if (r.ok) { const d = await r.json(); if (Array.isArray(d.items)) { ARTS.list = d.items; try { localStorage.setItem("lingoreader-articles", JSON.stringify(ARTS.list)); } catch {} renderRecentArticles(); } }
+  } catch {}
+}
+function injectRecentArticles() {
+  const card = document.querySelector(".import-card");
+  if (card && !$("#recentArticles")) {
+    const sec = document.createElement("section");
+    sec.id = "recentArticles";
+    sec.className = "recent-articles hidden";
+    card.appendChild(sec);
+  }
+}
+function renderRecentArticles() {
+  const sec = $("#recentArticles");
+  if (!sec) return;
+  if (!ARTS.list.length) { sec.classList.add("hidden"); sec.innerHTML = ""; return; }
+  sec.classList.remove("hidden");
+  sec.innerHTML = `<div class="recent-head">最近文章</div>` + ARTS.list.slice(0, 10).map(a => `
+    <div class="recent-item" data-open="${escapeHtml(a.key)}">
+      <div class="recent-info"><span class="recent-title">${escapeHtml(a.title || "Untitled")}</span><span class="recent-meta">${escapeHtml(a.host || "")}</span></div>
+      <button class="recent-remove" data-del="${escapeHtml(a.key)}" title="移除" aria-label="移除">×</button>
+    </div>`).join("");
+  sec.querySelectorAll("[data-open]").forEach(el => el.addEventListener("click", event => {
+    if (event.target.closest("[data-del]")) return;
+    const rec = ARTS.list.find(x => x.key === el.dataset.open);
+    if (rec) renderArticle({ title: rec.title, author: "", date: "", url: rec.url || "pasted://article", paragraphs: rec.paragraphs || [] }, { fromHistory: true });
+  }));
+  sec.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click", event => {
+    event.stopPropagation();
+    const key = btn.dataset.del;
+    ARTS.list = ARTS.list.filter(x => x.key !== key);
+    try { localStorage.setItem("lingoreader-articles", JSON.stringify(ARTS.list)); } catch {}
+    renderRecentArticles();
+    remoteArticleRemove(key);
+  }));
+}
+
 $("#loadBtn").addEventListener("click", loadArticleFromUrl);
 $("#urlInput").addEventListener("keydown", e => { if (e.key === "Enter") loadArticleFromUrl(); });
 $("#pasteModeBtn").addEventListener("click", () => $("#pastePanel").classList.toggle("hidden"));
@@ -535,3 +607,5 @@ $("#levelSelect")?.addEventListener("change", markAboveLevel);
 initVocab();
 checkStatus();
 loadCefr().then(() => { if (state.article) markAboveLevel(); renderVocabulary(); if (state.article) showDifficulty(state.article); });
+injectRecentArticles();
+loadArticles();
