@@ -11,6 +11,57 @@ const state = {
 
 const SYNC = { enabled: false };
 
+let CEFR = {};
+const CEFR_ORDER = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+function wordLevel(w) { return CEFR[String(w || "").toLowerCase()] || ""; }
+function readerLevelIdx() { return CEFR_ORDER[($("#levelSelect")?.value) || "A2"] || 2; }
+async function loadCefr() {
+  try { const c = localStorage.getItem("lingoreader-cefr"); if (c) { CEFR = JSON.parse(c) || {}; if (Object.keys(CEFR).length) return; } } catch {}
+  try {
+    const r = await fetch("/api/cefr");
+    if (r.ok) { const d = await r.json(); CEFR = d.words || {}; try { localStorage.setItem("lingoreader-cefr", JSON.stringify(CEFR)); } catch {} }
+  } catch {}
+}
+function markAboveLevel() {
+  const idx = readerLevelIdx();
+  $$(".word").forEach(n => {
+    const l = n.dataset.level || "";
+    n.classList.toggle("above-level", !!l && (CEFR_ORDER[l] || 0) > idx);
+  });
+}
+function ensureLegend() {
+  const help = document.querySelector(".reader-help");
+  if (help && !$("#levelLegend")) {
+    const span = document.createElement("span");
+    span.id = "levelLegend";
+    span.className = "reader-legend";
+    span.innerHTML = '<i></i>高於你程度的字';
+    help.appendChild(span);
+  }
+}
+function showDifficulty(article) {
+  const words = (article.paragraphs || []).join(" ").toLowerCase().match(/[a-z][a-z'-]*/g) || [];
+  const counts = { A1:0, A2:0, B1:0, B2:0, C1:0, C2:0 };
+  let graded = 0, above = 0;
+  const idx = readerLevelIdx();
+  for (const w of words) {
+    const l = wordLevel(w);
+    if (!l) continue;
+    counts[l]++; graded++;
+    if ((CEFR_ORDER[l] || 0) > idx) above++;
+  }
+  const meta = document.querySelector(".article-meta");
+  if (!meta) return;
+  let tag = $("#difficultyTag");
+  if (!tag) { tag = document.createElement("span"); tag.id = "difficultyTag"; tag.className = "difficulty-tag"; meta.appendChild(tag); }
+  if (!graded) { tag.innerHTML = ""; return; }
+  let cum = 0, level = "A1";
+  for (const l of ["A1","A2","B1","B2","C1","C2"]) { cum += counts[l]; if (cum >= graded * 0.85) { level = l; break; } }
+  const pct = Math.round(above / words.length * 100);
+  tag.innerHTML = `難度 <b>${level}</b> · 高於你程度 <b>${pct}%</b>`;
+}
+
+
 const demoArticle = {
   title: "Why Small Habits Matter More Than Big Plans",
   author: "LingoReader Demo",
@@ -101,6 +152,7 @@ function tokenizeSentence(sentence) {
       const word = document.createElement("span");
       word.className = "word" + (isSaved(piece) ? " saved" : "");
       word.dataset.word = piece;
+      word.dataset.level = wordLevel(piece);
       word.textContent = piece;
       word.addEventListener("click", event => {
         event.stopPropagation();
@@ -139,6 +191,9 @@ function renderArticle(article) {
     });
     body.appendChild(p);
   });
+  markAboveLevel();
+  ensureLegend();
+  showDifficulty(article);
   window.scrollTo({ top: document.querySelector(".workspace").offsetTop - 14, behavior: "smooth" });
 }
 
@@ -311,7 +366,14 @@ function renderAnalysis(data) {
 
 function renderVocabulary() {
   const query = $("#vocabSearch")?.value.toLowerCase().trim() || "";
-  const items = state.vocabulary.filter(item => !query || item.word.toLowerCase().includes(query) || (item.definition || "").toLowerCase().includes(query));
+  const lvlFilter = $("#vocabLevelFilter")?.value || "";
+  const items = state.vocabulary.filter(item => {
+    const textOk = !query || item.word.toLowerCase().includes(query) || (item.definition || "").toLowerCase().includes(query);
+    if (!textOk) return false;
+    if (!lvlFilter) return true;
+    const l = wordLevel(item.word);
+    return lvlFilter === "none" ? !l : l === lvlFilter;
+  });
   const list = $("#vocabList");
   if (!items.length) {
     list.innerHTML = `<div class="panel-empty"><div class="panel-icon">☆</div><h3>${query ? "找不到單字" : "單字本還是空的"}</h3><p>閱讀時點一下單字，再按「加入單字本」。</p></div>`;
@@ -319,7 +381,7 @@ function renderVocabulary() {
   }
   list.innerHTML = items.map(item => `
     <div class="vocab-card">
-      <div class="vocab-card-head"><h4>${escapeHtml(item.word)}</h4><button class="remove-btn" data-remove="${escapeHtml(item.word)}">移除</button></div>
+      <div class="vocab-card-head"><h4>${escapeHtml(item.word)}${wordLevel(item.word) ? `<span class="lvl-badge" data-lvl="${wordLevel(item.word)}">${wordLevel(item.word)}</span>` : ""}</h4><button class="remove-btn" data-remove="${escapeHtml(item.word)}">移除</button></div>
       <div class="phonetic">${escapeHtml(item.phonetic || "")} ${item.partOfSpeech ? `· ${escapeHtml(item.partOfSpeech)}` : ""}</div>
       <p>${escapeHtml(item.definition || "")}</p>
       ${item.englishDefinition ? `<p class="vocab-english">${escapeHtml(item.englishDefinition)}</p>` : ""}
@@ -436,5 +498,19 @@ $("#vocabSearch").addEventListener("input", renderVocabulary);
 $("#exportBtn").addEventListener("click", exportCsv);
 $$('.tab').forEach(tab => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
 
+(function injectVocabFilter() {
+  const tb = document.querySelector(".vocab-toolbar");
+  if (tb && !$("#vocabLevelFilter")) {
+    const sel = document.createElement("select");
+    sel.id = "vocabLevelFilter";
+    sel.title = "依 CEFR 等級篩選";
+    sel.innerHTML = '<option value="">全部等級</option>' + ["A1","A2","B1","B2","C1","C2"].map(l => `<option value="${l}">${l}</option>`).join("") + '<option value="none">未分級</option>';
+    tb.insertBefore(sel, $("#exportBtn"));
+    sel.addEventListener("change", renderVocabulary);
+  }
+})();
+$("#levelSelect")?.addEventListener("change", markAboveLevel);
+
 initVocab();
 checkStatus();
+loadCefr().then(() => { if (state.article) markAboveLevel(); renderVocabulary(); if (state.article) showDifficulty(state.article); });
