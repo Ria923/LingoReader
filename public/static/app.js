@@ -9,6 +9,8 @@ const state = {
   vocabulary: JSON.parse(localStorage.getItem("lingoreader-vocabulary") || "[]"),
 };
 
+const SYNC = { enabled: false };
+
 const demoArticle = {
   title: "Why Small Habits Matter More Than Big Plans",
   author: "LingoReader Demo",
@@ -237,13 +239,14 @@ function renderDictionary(data) {
 function toggleSaveWord(data) {
   const index = state.vocabulary.findIndex(item => item.word.toLowerCase() === data.word.toLowerCase());
   if (index >= 0) {
-    state.vocabulary.splice(index, 1);
+    const [removed] = state.vocabulary.splice(index, 1);
     toast("已從單字本移除");
+    remoteRemove(removed.word);
   } else {
     const firstMeaning = data.meanings?.[0];
     const firstEntry = firstMeaning?.definitions?.[0];
     const chineseDefinition = firstEntry?.chinese?.join("、") || data.chineseSummary?.join("、") || "";
-    state.vocabulary.unshift({
+    const item = {
       word: data.word,
       phonetic: data.phonetic || "",
       partOfSpeech: firstMeaning?.partOfSpeechZh || firstMeaning?.partOfSpeech || "",
@@ -251,8 +254,10 @@ function toggleSaveWord(data) {
       englishDefinition: firstEntry?.definition || "",
       sentence: state.selectedSentence || "",
       createdAt: new Date().toISOString()
-    });
+    };
+    state.vocabulary.unshift(item);
     toast("已加入單字本");
+    remoteUpsert(item);
   }
   saveVocabulary();
   renderDictionary(data);
@@ -322,6 +327,7 @@ function renderVocabulary() {
     </div>`).join("");
   $$('[data-remove]').forEach(button => button.addEventListener("click", () => {
     state.vocabulary = state.vocabulary.filter(item => item.word !== button.dataset.remove);
+    remoteRemove(button.dataset.remove);
     saveVocabulary();
   }));
 }
@@ -355,11 +361,58 @@ async function checkStatus() {
     const data = await fetch("/api/status").then(r => r.json());
     const pill = $("#aiStatus");
     const lockLabel = data.accessProtected ? " · 已鎖定" : "";
-    pill.textContent = (data.aiReady ? "Gemini 解析可用" : "免費朗讀／字典可用") + lockLabel;
+    pill.textContent = (data.aiReady ? ((data.aiProvider || "AI") + " 解析可用") : "免費朗讀／字典可用") + lockLabel;
     pill.classList.remove("ready", "off");
     pill.classList.add(data.aiReady ? "ready" : "off");
     pill.title = data.aiReady ? "整句翻譯、文法與慣用語解析已啟用" : "朗讀與字典不需要 API Key；整句 AI 解析尚未啟用";
   } catch {}
+}
+
+async function remoteUpsert(item) {
+  if (!SYNC.enabled) return;
+  try {
+    await apiFetch("/api/vocab", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(item)
+    });
+  } catch { toast("雲端同步失敗，已存在本機"); }
+}
+
+async function remoteRemove(word) {
+  if (!SYNC.enabled) return;
+  try {
+    await apiFetch("/api/vocab?word=" + encodeURIComponent(word), { method: "DELETE" });
+  } catch { toast("雲端移除失敗，已改本機"); }
+}
+
+async function initVocab() {
+  try {
+    const response = await apiFetch("/api/vocab");
+    if (!response.ok) throw new Error("sync-off");
+    const data = await response.json();
+    SYNC.enabled = true;
+    const remote = data.items || [];
+    const remoteWords = new Set(remote.map(i => (i.word || "").toLowerCase()));
+    const localOnly = state.vocabulary.filter(i => !remoteWords.has((i.word || "").toLowerCase()));
+    if (localOnly.length) {
+      try {
+        await apiFetch("/api/vocab/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(localOnly)
+        });
+      } catch {}
+    }
+    state.vocabulary = [...remote, ...localOnly]
+      .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    localStorage.setItem("lingoreader-vocabulary", JSON.stringify(state.vocabulary));
+  } catch {
+    SYNC.enabled = false; // 離線或尚未設定雲端 → 只用本機
+  }
+  updateVocabCount();
+  renderVocabulary();
+  refreshSavedHighlights();
 }
 
 $("#loadBtn").addEventListener("click", loadArticleFromUrl);
@@ -383,6 +436,5 @@ $("#vocabSearch").addEventListener("input", renderVocabulary);
 $("#exportBtn").addEventListener("click", exportCsv);
 $$('.tab').forEach(tab => tab.addEventListener("click", () => switchTab(tab.dataset.tab)));
 
-updateVocabCount();
-renderVocabulary();
+initVocab();
 checkStatus();
